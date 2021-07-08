@@ -1,0 +1,17 @@
+{
+    "name": "wowhead-scrape",
+    "license": "MIT",
+    "author": {
+        "name": "ahakola",
+        "url": "https://github.com/ahakola/"
+    },
+    "version": "1.0.0",
+    "dependencies": {
+        "cheerio": "1.0.0-rc.3",
+        "got": "10.4.0",
+        "x-ray": "2.3.4"
+    },
+    "scripts": {
+        "start": "node wowhead-scrape"
+    }
+}
