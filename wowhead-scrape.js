@@ -43,7 +43,7 @@ function processHtmlTable(table, url, outputFile, index, tableHtmlList_lenght) {
 		.find('tr')
 		.each(function (i, row) {
 
-			console.log(i, $(row).text().trim()) //, $(row).html().trim())
+			//console.log(i, $(row).text().trim()) //, $(row).html().trim())
 			let rowTextData = [];
 			let rowHtmlData = [];
 
@@ -129,7 +129,12 @@ function processHtmlTable(table, url, outputFile, index, tableHtmlList_lenght) {
 						// Cache of the Legion - The Mechanar
 						source = 'drop'
 					} else if (linkData[3]) {
-						if (linkData[3][1] == 'npc' || linkData[3][1] == 'zone' || linkData[3][1] == 'item') {
+						if (linkData[3][1] == 'npc' || linkData[3][1] == 'zone' || linkData[3][1] == 'item' || linkData[3][1] == 'object') {
+							// Objects:
+							// Reinforced Fel Iron Chest - Hellfire Ramparts
+							// Cache of the Legion - The Mechanar
+							// Dust Covered Chest - Karazhan (Chess Event)
+							// Four Horsemen Chest - Naxxramas
 							source = 'drop';
 						} else if (linkData[3][1] == 'quest') {
 							source = 'quest';
@@ -140,6 +145,13 @@ function processHtmlTable(table, url, outputFile, index, tableHtmlList_lenght) {
 						} else {
 							source  = '!' + linkData[3][1];
 						};
+					} else if (rowTextData[3] == '5item=23449' && rowTextData[4] && rowTextData[4] == 'Nakodu') {
+						// Special case, Pre-Raid DPS Priest Weapon #3
+						// source = "!null"
+						// preciseSource = "5item=23449 - Nakodu"
+						source = 'crafted';
+						rowTextData[3] = rowTextData[1];
+						rowTextData[4] = 'Plans: Eternium Runed Blade';
 					} else {
 						source = '!null';
 					};
@@ -163,7 +175,10 @@ function processHtmlTable(table, url, outputFile, index, tableHtmlList_lenght) {
 						if (err) return console.log(err);
 						//console.log('	-', itemName);
 					});
-					console.log(' ->', itemName, i, source, preciseSource, '\n');
+					//console.log(' ->', itemName, i, source, preciseSource, '\n');
+					if (source != 'drop' && source != 'quest' && source != 'vendor' && source != 'crafted') {
+						console.log('\n ->', itemName, i, source, preciseSource, rowTextData[3], rowHtmlData[3]);
+					};
 					itemCount++;
 				};
 
@@ -331,7 +346,7 @@ linkArray = {
 let cmdArgs = process.argv.slice(2);
 //console.log('Args: ', cmdArgs, cmdArgs.length);
 
-const automationMode = 2;
+const automationMode = 1;
 /*
 	1	Generate all lists from built-in array
 		Can be bit scetchy since the asynchronous nature of things can cause
