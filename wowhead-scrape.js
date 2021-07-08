@@ -16,11 +16,11 @@ const itemRegex = /\/([a-z]+)=([0-9]+)/;
 const itemNameRegex = /\"\>(?<itemName>\D+)\<\/a>/;
 const questRegex = / \(Quest\)| \(quest\)/;
 const soldByRegex = /Sold By|Badges at| Spirit Shard| Badge of Justice/;
-const arenaVendorRegex = /Arena Vendor|Arena PvP Reward|Arena Points|Honor Points|Mark of Honor|[0-9]+ rating|\d,\d{3} |PVP Vendor - Vendors TBD|Vendor TBD - Zone TBD/;
-const reputationRegex = /- Exalted| - Revered| - Honored| - Friendly/;
-const dropRegex = /World Drop|Trash Drop|Trash mobs|Zone Drop|World drop - Anywhere|Random world drop - Anywhere/;
+const arenaVendorRegex = /(?:Arena|PVP) (?:Vendor|Reward)|(?:Arena|Honor) Points|Mark of Honor|\d,\d{3} |Vendor TBD - Zone TBD/i; // '\d,\d{3} ' -> '3,150 points' & '1,850 rating'
+const reputationRegex = / - (?:Exalted|Revered|Honored|Friendly)/;
+const dropRegex = /(?:World|Trash|Zone) Drop|Trash mobs/i;
 const craftedRegex = /Pattern: |Plans: /;
-const armorTokenRegex = /Helm of the Fallen |Pauldrons of the Fallen |Chestguard of the Fallen |Leggings of the Fallen |Gloves of the Fallen /;
+const armorTokenRegex = /(?:Helm|Pauldrons|Gloves|Chestguard|Leggings|Gloves) of the Fallen /;
 
 const dir = './ReadyFiles';
 if (!fs.existsSync(dir)){
@@ -53,10 +53,6 @@ function processHtmlTable(table, url, outputFile, index, tableHtmlList_lenght) {
 				const cellText = $(cell).text(); //.trim();
 				const cellHtml = $(cell).html(); //.trim();
 
-				// Cyclone HelmHelm of the Fallen Champion
-				/*if (cellText.match(/Cyclone Helm/)) {
-					console.log(cellText.match(/Cyclone Helm/));
-				};*/
 				//console.log(i, j, cellText, cellHtml);
 				//console.log(i, j, cellText);
 				rowTextData[j] = cellText;
@@ -105,27 +101,27 @@ function processHtmlTable(table, url, outputFile, index, tableHtmlList_lenght) {
 					} else if (matchCrafted || (linkData[3] && linkData[3][1] == 'spell') || rowTextData[3] == 'Goblin Engineering') {
 						source = 'crafted';
 					} else if (
-						rowTextData[3] == 'Opera Event' || rowTextData[3] == 'Karazhan Chess Event' || rowTextData[3] == 'Any Opera Event' || rowTextData[3] == 'Opera eventShared' ||
+						/*rowTextData[3] == 'Opera Event' || rowTextData[3] == 'Karazhan Chess Event' || rowTextData[3] == 'Any Opera Event' || rowTextData[3] == 'Opera eventShared' ||
 						rowTextData[3] == 'Opera EventThe Crone' || rowTextData[3] == 'Opera EventThe Big Bad Wolf' || rowTextData[3] == 'Opera EventRibbon of Sacrifice and Ribbon of Sacrifice' ||
-						rowTextData[3] == 'Magtheridon\'s Head from Magtheridon' || rowTextData[3] == 'Magtheridon\'s Head - Magtheridon\'s Lair'
+						rowTextData[3] == 'Magtheridon\'s Head from Magtheridon' || rowTextData[3] == 'Magtheridon\'s Head - Magtheridon\'s Lair'*/
+						rowTextData[3] == 'Karazhan Chess Event' || rowTextData[3].match(/Opera Event/i) || rowTextData[3].match(/Magtheridon\'s Head/i)
 					) {
 						// Special case for new raid:
 						// Karazhan Opera & Chess Event
-						// Magtheridon's Head from Magtheridon - Magtheridon's Lair
-						// Magtheridon's Head - Magtheridon's Lair
+						// Magtheridon's Head from Magtheridon - Magtheridon's Lair, Magtheridon's Head - Magtheridon's Lair
 						source = 'drop';
 					} else if (
-						rowTextData[3] == '3 Drake Bosses' || rowTextData[3] == 'Splinter of Atiesh - Naxxramas' || rowTextData[3] == 'The Phylactery of Kel\'Thuzad -  Classic Naxxramas' || 
+						/*rowTextData[3] == '3 Drake Bosses' || rowTextData[3] == 'Splinter of Atiesh - Naxxramas' || rowTextData[3] == 'The Phylactery of Kel\'Thuzad -  Classic Naxxramas' || 
 						rowTextData[3] == 'The Phylactery of Kel\'Thuzad from Kel\'Thuzad' || rowTextData[3] == 'Frame of Atiesh' || rowTextData[3] == 'Eye of C\'Thun dropped by C\'Thun - Temple of Ahn\'Qiraj' ||
-						rowTextData[3] == 'Frame of Atiesh - Naxxramas' || (rowTextData[3] == 'Various Bosses' && rowTextData[4] && rowTextData[4] == 'Molten CoreWoW Classic')
+						rowTextData[3] == 'Frame of Atiesh - Naxxramas' || (rowTextData[3] == 'Various Bosses' && rowTextData[4] && rowTextData[4] == 'Molten CoreWoW Classic')*/
+						rowTextData[3] == '3 Drake Bosses' || rowTextData[3].match(/of Atiesh/i) || rowTextData[3].match(/The Phylactery of Kel\'Thuzad/i) ||
+						rowTextData[3].match(/Eye of C\'Thun/i) || (rowTextData[3] == 'Various Bosses' && rowTextData[4] && rowTextData[4] == 'Molten CoreWoW Classic')
 					) {
 						// Special case for old raids:
 						// 3 Drake Bosses - Blackwing Lair (that is apparently still relevant)
-						// Splinter of Atiesh - Naxxramas
+						// Splinter of Atiesh - Naxxramas, Frame of Atiesh, Frame of Atiesh - Naxxramas
 						// The Phylactery of Kel'Thuzad -  Classic Naxxramas
-						// Frame of Atiesh
 						// Eye of C'Thun dropped by C'Thun - Temple of Ahn'Qiraj
-						// Frame of Atiesh - Naxxramas
 						// Various Bosses - Molten CoreWoW Classic
 						source = 'drop'
 					} else if (rowTextData[3] == 'Cache of the Legion') {
@@ -142,10 +138,10 @@ function processHtmlTable(table, url, outputFile, index, tableHtmlList_lenght) {
 						} else if (linkData[3][1] == 'faction') {
 							source = 'vendor'
 						} else {
-							source  = linkData[3][1];
+							source  = '!' + linkData[3][1];
 						};
 					} else {
-						source = 'null';
+						source = '!null';
 					};
 					let preciseSource = (matchQuest) ? rowTextData[3].replace(questRegex, '') : rowTextData[3];
 					if (rowTextData[4]) {
