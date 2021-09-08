@@ -14,13 +14,15 @@ const xray = require('x-ray')({
 //const itemRegex = /\/(?<linkType>[a-z]+)=(?<linkId>[0-9]+)/;
 const itemRegex = /\/([a-z]+)=([0-9]+)/;
 const itemNameRegex = /\"\>(?<itemName>\D+)\<\/a>/;
-const questRegex = / \(Quest\)| \(quest\)/;
+const questRegex = / \(Quest\)/i;
 const soldByRegex = /Sold By|Badges at| Spirit Shard| Badge of Justice/;
-const arenaVendorRegex = /(?:Arena|PVP) (?:Vendor|Reward)|(?:Arena|Honor) Points|Mark of Honor|\d,\d{3} |Vendor TBD - Zone TBD/i; // '\d,\d{3} ' -> '3,150 points' & '1,850 rating'
+const arenaVendorRegex = /(?:Arena|PVP) (?:Vendor|Reward)|(?:Arena|Honor) Points|Mark of Honor|\d,\d{3} |Vendor TBD - Zone TBD|Season \d Arena/i; // '\d,\d{3} ' -> '3,150 points' & '1,850 rating'
 const reputationRegex = / - (?:Exalted|Revered|Honored|Friendly)/;
 const dropRegex = /(?:World|Trash|Zone) Drop|Trash mobs/i;
-const craftedRegex = /Pattern: |Plans: /;
+const craftedRegex = /(?:Pattern:|Plans:) |(?:BoP|BoE) Crafted by/;
 const armorTokenRegex = /(?:Helm|Pauldrons|Gloves|Chestguard|Leggings|Gloves) of the Fallen /;
+const seasonalEventRegex = /Brewfest/;
+const darkmoonCardRegex = /Darkmoon Card: (?:Wrath|Madness|Vengeance|Crusade)/;
 
 const dir = './ReadyFiles';
 if (!fs.existsSync(dir)){
@@ -30,7 +32,7 @@ if (!fs.existsSync(dir)){
 
 function processHtmlTable(table, url, outputFile, index, tableHtmlList_lenght) {
 	if (index == 0) {
-		let firstLine = '	-- ' + url + '\n'
+		let firstLine = '	-- ' + url + '\n';
 		fs.writeFile(dir + '/' + outputFile, firstLine, function (err) {
 			if (err) return console.log(err);
 			//console.log(' -', outputFile);
@@ -59,7 +61,7 @@ function processHtmlTable(table, url, outputFile, index, tableHtmlList_lenght) {
 				rowHtmlData[j] = cellHtml;
 			});
 
-			//console.log(rowTextData.length, rowTextData, rowHtmlData.length, rowHtmlData)
+			//console.log(rowTextData.length, rowTextData, rowHtmlData.length, rowHtmlData);
 
 			if (rowTextData[0] && rowTextData[3]) { // Proper BiS-list table
 
@@ -72,11 +74,11 @@ function processHtmlTable(table, url, outputFile, index, tableHtmlList_lenght) {
 						console.log(linkFound.groups.linkType, linkFound.groups.linkId);
 					};*/
 				};
-				//console.log(linkData)
+				//console.log(linkData);
 				if (linkData[1] && linkData[1][2] && rowTextData[1].trim() != 'PMC') {
 					// PMC is some Primal Mooncloth theorycrafting in table form at Phase1 Priest Healing url and it will contaminate the bis-list
 
-					//console.log(linkData[1][2], rowTextData[1])
+					//console.log(linkData[1][2], rowTextData[1]);
 
 					const matchQuest = rowTextData[3].match(questRegex);
 					const matchSoldBy = rowTextData[3].match(soldByRegex);
@@ -85,6 +87,8 @@ function processHtmlTable(table, url, outputFile, index, tableHtmlList_lenght) {
 					const matchDrop = rowTextData[4] ? (rowTextData[4].match(dropRegex) || rowTextData[3].match(dropRegex)) : rowTextData[3].match(dropRegex);
 					const matchCrafted = rowTextData[4] ? (rowTextData[4].match(craftedRegex) || rowTextData[3].match(craftedRegex)) : rowTextData[3].match(craftedRegex);
 					const matchToken = rowTextData[4] ? (rowTextData[4].match(armorTokenRegex) || rowTextData[3].match(armorTokenRegex)) : rowTextData[3].match(armorTokenRegex);
+					const matchSeasonal = rowTextData[4] ? rowTextData[4].match(seasonalEventRegex) || rowTextData[3].match(seasonalEventRegex) : rowTextData[3].match(seasonalEventRegex);
+					const matchDarkmoonCard = rowTextData[1].match(darkmoonCardRegex);
 					//console.log(matchQuest);
 
 					let source = 'drop';
@@ -94,12 +98,14 @@ function processHtmlTable(table, url, outputFile, index, tableHtmlList_lenght) {
 						(rowTextData[3].toLowerCase() == 'pvp vendor' || (rowTextData[4] && rowTextData[4].toLowerCase() == 'pvp vendor'))
 					) {
 						source = 'vendor';
-					} else if (matchQuest || rowTextData[3] == 'Quest') {
+					} else if (matchQuest || rowTextData[3] == 'Quest' || matchDarkmoonCard) {
 						source = 'quest';
 					} else if (matchDrop || matchToken) {
 						source = 'drop';
 					} else if (matchCrafted || (linkData[3] && linkData[3][1] == 'spell') || rowTextData[3] == 'Goblin Engineering') {
 						source = 'crafted';
+					} else if (matchSeasonal) {
+						source = 'seasonal';
 					} else if (
 						/*rowTextData[3] == 'Opera Event' || rowTextData[3] == 'Karazhan Chess Event' || rowTextData[3] == 'Any Opera Event' || rowTextData[3] == 'Opera eventShared' ||
 						rowTextData[3] == 'Opera EventThe Crone' || rowTextData[3] == 'Opera EventThe Big Bad Wolf' || rowTextData[3] == 'Opera EventRibbon of Sacrifice and Ribbon of Sacrifice' ||
@@ -115,7 +121,8 @@ function processHtmlTable(table, url, outputFile, index, tableHtmlList_lenght) {
 						rowTextData[3] == 'The Phylactery of Kel\'Thuzad from Kel\'Thuzad' || rowTextData[3] == 'Frame of Atiesh' || rowTextData[3] == 'Eye of C\'Thun dropped by C\'Thun - Temple of Ahn\'Qiraj' ||
 						rowTextData[3] == 'Frame of Atiesh - Naxxramas' || (rowTextData[3] == 'Various Bosses' && rowTextData[4] && rowTextData[4] == 'Molten CoreWoW Classic')*/
 						rowTextData[3] == '3 Drake Bosses' || rowTextData[3].match(/of Atiesh/i) || rowTextData[3].match(/The Phylactery of Kel\'Thuzad/i) ||
-						rowTextData[3].match(/Eye of C\'Thun/i) || (rowTextData[3] == 'Various Bosses' && rowTextData[4] && rowTextData[4] == 'Molten CoreWoW Classic')
+						rowTextData[3].match(/Eye of C\'Thun/i) || (rowTextData[3] == 'Various Bosses' && rowTextData[4] && rowTextData[4] == 'Molten CoreWoW Classic') ||
+						(rowTextData[3] == 'Drops from lesser dragon bosses' && rowTextData[4] && rowTextData[4] == 'Blackwing Lair WoW Classic')
 					) {
 						// Special case for old raids:
 						// 3 Drake Bosses - Blackwing Lair (that is apparently still relevant)
@@ -123,11 +130,12 @@ function processHtmlTable(table, url, outputFile, index, tableHtmlList_lenght) {
 						// The Phylactery of Kel'Thuzad -  Classic Naxxramas
 						// Eye of C'Thun dropped by C'Thun - Temple of Ahn'Qiraj
 						// Various Bosses - Molten CoreWoW Classic
-						source = 'drop'
+						// Drops from lesser dragon bosses - Blackwing Lair WoW Classic
+						source = 'drop';
 					} else if (rowTextData[3] == 'Cache of the Legion') {
 						// Special case for dungeons:
 						// Cache of the Legion - The Mechanar
-						source = 'drop'
+						source = 'drop';
 					} else if (linkData[3]) {
 						if (linkData[3][1] == 'npc' || linkData[3][1] == 'zone' || linkData[3][1] == 'item' || linkData[3][1] == 'object') {
 							// Objects:
@@ -141,9 +149,16 @@ function processHtmlTable(table, url, outputFile, index, tableHtmlList_lenght) {
 						} else if (linkData[3][1] == 'spell') {
 							source = 'crafted';
 						} else if (linkData[3][1] == 'faction') {
-							source = 'vendor'
+							source = 'vendor';
+						} else if (linkData[3][1] == 'currency') {
+							//console.log(">", linkData[3]);
+							if (linkData[3][2] == 1900) { // Arenaa Points
+								source = 'vendor';
+							} else {
+								source = '!' + linkData[3][1] + "@" + linkData[3][2];
+							}
 						} else {
-							source  = '!' + linkData[3][1];
+							source = '!' + linkData[3][1];
 						};
 					} else if (rowTextData[3] == '5item=23449' && rowTextData[4] && rowTextData[4] == 'Nakodu') {
 						// Special case, Pre-Raid DPS Priest Weapon #3
@@ -176,7 +191,7 @@ function processHtmlTable(table, url, outputFile, index, tableHtmlList_lenght) {
 						//console.log('	-', itemName);
 					});
 					//console.log(' ->', itemName, i, source, preciseSource, '\n');
-					if (source != 'drop' && source != 'quest' && source != 'vendor' && source != 'crafted') {
+					if (source != 'drop' && source != 'quest' && source != 'vendor' && source != 'crafted' && source != 'seasonal') {
 						console.log('\n ->', itemName, i, source, preciseSource, rowTextData[3], rowHtmlData[3]);
 					};
 					itemCount++;
@@ -188,7 +203,7 @@ function processHtmlTable(table, url, outputFile, index, tableHtmlList_lenght) {
 	//console.log(itemCount);
 	return itemCount;
 	//return true;
-}
+};
 
 function getBiSitems(url, outputFile) {
 	//return new Promise(function(resolve, reject) {
@@ -202,7 +217,7 @@ function getBiSitems(url, outputFile) {
 		const requestOptions = {
 			method: 'GET',
 			url: url,
-		}
+		};
 
 		request.get(requestOptions, function(err, response, body) {
 			if (err) {
@@ -218,31 +233,31 @@ function getBiSitems(url, outputFile) {
 				//resolve(tableHtmlList.map(function(table, index) {
 				tableHtmlList.map(function(table, index) {
 					table = '<table>' + table + '</table>';
-					//console.log('index:', index, table)
+					//console.log('index:', index, table);
 
-					return processHtmlTable(table, url, outputFile, index, tableHtmlList.length)
+					return processHtmlTable(table, url, outputFile, index, tableHtmlList.length);
 				});
 				//}));
 			});
 		});
 		*/
 
-		const start = new Date()
+		const start = new Date();
 		got(url).then(response => {
 			//xray(response.body, ['table@html'])(function (error, tableHtmlList) {
 			xray(response.body, ['table@html | replaceLineBreak'])(function (error, tableHtmlList) { // <br> -elements begone!
 				if (error) {
 					return console.log(error);
 				};
-				let itemCount = 0
+				let itemCount = 0;
 				tableHtmlList.map(function(table, index) {
 					table = '<table>' + table + '</table>';
 					itemCount += processHtmlTable(table, url, outputFile, index, tableHtmlList.length);
 				});
 				if (itemCount > 0) {
-					const executionTime = new Date() - start
+					const executionTime = new Date() - start;
 					console.log(' - %s, added %d items in %dms', outputFile, itemCount, executionTime);
-				}
+				};
 			});
 		}).catch(err => {
 			console.log(err);
@@ -338,6 +353,47 @@ linkArray = {
 			Marksmanship: 'https://tbc.wowhead.com/guides/marksmanship-hunter-dps-karazhan-best-in-slot-gear-burning-crusade-classic-wow',
 			Survival: 'https://tbc.wowhead.com/guides/survival-hunter-dps-karazhan-best-in-slot-gear-burning-crusade-classic-wow'
 		}
+	},
+	'Phase2': {
+		Warrior: {
+			Arms: 'https://tbc.wowhead.com/guides/arms-warrior-dps-tk-ssc-phase-2-best-in-slot-gear-burning-crusade',
+			Fury: 'https://tbc.wowhead.com/guides/fury-warrior-dps-tk-ssc-phase-2-best-in-slot-gear-burning-crusade',
+			Protection: 'https://tbc.wowhead.com/guides/protection-warrior-tank-tk-ssc-phase-2-best-in-slot-gear-burning-crusade'
+		},
+		Paladin: {
+			Holy: 'https://tbc.wowhead.com/guides/holy-paladin-healer-tk-ssc-phase-2-best-in-slot-gear-burning-crusade',
+			Protection: 'https://tbc.wowhead.com/guides/paladin-tank-tk-ssc-phase-2-best-in-slot-gear-burning-crusade',
+			Retribution: 'https://tbc.wowhead.com/guides/retribution-paladin-dps-tk-ssc-phase-2-best-in-slot-gear-burning-crusade'
+		},
+		Priest: {
+			Healing: 'https://tbc.wowhead.com/guides/priest-healer-tk-ssc-phase-2-best-in-slot-gear-burning-crusade',
+			DPS: 'https://tbc.wowhead.com/guides/shadow-priest-dps-tk-ssc-phase-2-best-in-slot-gear-burning-crusade'
+		},
+		Shaman: {
+			Elemental: 'https://tbc.wowhead.com/guides/elemental-shaman-dps-tk-ssc-phase-2-best-in-slot-gear-burning-crusade',
+			Enhancement: 'https://tbc.wowhead.com/guides/enhancement-shaman-dps-tk-ssc-phase-2-best-in-slot-gear-burning-crusade',
+			Restoration: 'https://tbc.wowhead.com/guides/shaman-healer-tk-ssc-phase-2-best-in-slot-gear-burning-crusade'
+		},
+		Druid: {
+			Balance: 'https://tbc.wowhead.com/guides/balance-druid-dps-tk-ssc-phase-2-best-in-slot-gear-burning-crusade',
+			'Feral-Tank': 'https://tbc.wowhead.com/guides/feral-druid-tank-tk-ssc-phase-2-best-in-slot-gear-burning-crusade',
+			'Feral-DPS': 'https://tbc.wowhead.com/guides/feral-druid-dps-tk-ssc-phase-2-best-in-slot-gear-burning-crusade',
+			Restoration: 'https://tbc.wowhead.com/guides/druid-healer-tk-ssc-phase-2-best-in-slot-gear-burning-crusade'
+		},
+		Rogue: {
+			Combat: 'https://tbc.wowhead.com/guides/rogue-dps-tk-ssc-phase-2-best-in-slot-gear-burning-crusade'
+		},
+		Mage: {
+			Arcane: 'https://tbc.wowhead.com/guides/arcane-mage-dps-tk-ssc-phase-2-best-in-slot-gear-burning-crusade',
+			Fire: 'https://tbc.wowhead.com/guides/fire-mage-dps-tk-ssc-phase-2-best-in-slot-gear-burning-crusade'
+		},
+		Warlock: {
+			Affliction: 'https://tbc.wowhead.com/guides/affliction-warlock-dps-tk-ssc-phase-2-best-in-slot-gear-burning-crusade',
+			Destruction: 'https://tbc.wowhead.com/guides/destruction-warlock-dps-tk-ssc-phase-2-best-in-slot-gear-burning-crusade'
+		},
+		Hunter: {
+			BeastMastery: 'https://tbc.wowhead.com/guides/beast-mastery-hunter-dps-tk-ssc-phase-2-best-in-slot-gear-burning-crusade'
+		}
 	}
 };
 
@@ -346,7 +402,7 @@ linkArray = {
 let cmdArgs = process.argv.slice(2);
 //console.log('Args: ', cmdArgs, cmdArgs.length);
 
-const automationMode = 1;
+const automationMode = 2;
 /*
 	1	Generate all lists from built-in array
 		Can be bit scetchy since the asynchronous nature of things can cause
@@ -360,9 +416,9 @@ const automationMode = 1;
 		- Hunter: foobar
 		- Priest: Pre-Raid DPS, something funky with #3 weapon
 */
-const phaseKey = 'Pre-Raid';
-const classKey = 'Hunter';
-const specKey = 'Survival';
+const phaseKey = 'Phase2';
+const classKey = 'Warlock';
+const specKey = 'Destruction';
 
 
 if (cmdArgs.length == 2) {
