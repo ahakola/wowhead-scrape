@@ -25,3 +25,4 @@ Here are list of the BiS-lists I used to write and test this script with:
 
 - [Best in Slot Pre-Raid Gear Recommendations for Burning Crusade Classic](https://tbc.wowhead.com/news/best-in-slot-pre-raid-gear-recommendations-for-burning-crusade-classic-322607)
 - [Best in Slot Gear Recommendations for Burning Crusade Classic Phase One](https://tbc.wowhead.com/news/best-in-slot-gear-recommendations-for-burning-crusade-classic-phase-one-322608)
+- [Best in Slot Gear Guides for Burning Crusade Classic Phase 2](https://tbc.wowhead.com/news/best-in-slot-gear-guides-for-burning-crusade-classic-phase-2-323717)
